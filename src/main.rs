@@ -10,10 +10,27 @@ use tokio::sync::broadcast;
 use tokio::time::sleep;
 use warp::Filter;
 
-/// Runs the Kafka consumer and WebSocket server.
-/// Incoming Kafka messages are sent via a broadcast channel to connected WebSocket clients.
+const KAFKA_BOOTSTRAP_SERVERS: &str = "localhost:9092";
+const DEFAULT_TOPIC: &str = "default_topic";
+const WS_SERVER_ADDR: ([u8; 4], u16) = ([127, 0, 0, 1], 3030);
+
+fn create_producer() -> FutureProducer {
+    ClientConfig::new()
+        .set("bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
+        .create()
+        .expect("Failed to create Kafka producer")
+}
+
+fn create_consumer() -> StreamConsumer {
+    ClientConfig::new()
+        .set("bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
+        .set("group.id", "group1")
+        .set("auto.offset.reset", "earliest")
+        .create()
+        .expect("Failed to create Kafka consumer")
+}
+
 async fn run_server() {
-    // Create a broadcast channel to share messages with WebSocket clients.
     let (tx, _) = broadcast::channel::<String>(16);
 
     let consumer_tx = tx.clone();
@@ -28,28 +45,21 @@ async fn run_server() {
             ws.on_upgrade(move |socket| handle_ws(socket, rx))
         });
 
-    println!("Starting WebSocket server on 127.0.0.1:3030/ws");
-    warp::serve(ws_route).run(([127, 0, 0, 1], 3030)).await;
+    println!("Starting WebSocket server on {}:{} (endpoint: /ws)", WS_SERVER_ADDR.0.iter().map(|b| b.to_string()).collect::<Vec<_>>().join("."), WS_SERVER_ADDR.1);
+    warp::serve(ws_route).run(WS_SERVER_ADDR).await;
 }
 
-/// Runs the Kafka producer, simulating messages being sent to Kafka.
 async fn run_client() {
-    let producer: FutureProducer = ClientConfig::new()
-        .set("bootstrap.servers", "localhost:9092")
-        .create()
-        .expect("Failed to create Kafka producer");
-
-    let topic = "default_topic";
+    let producer = create_producer();
     let mut counter = 0;
 
     loop {
         let payload = format!("Message number {}", counter);
         let key = format!("key-{}", counter);
-        let record = FutureRecord::to(topic)
+        let record = FutureRecord::to(DEFAULT_TOPIC)
             .payload(&payload)
             .key(&key);
 
-        // Send the record and await the delivery status.
         match producer.send(record, Duration::from_secs(0)).await {
             Ok(delivery) => println!("Delivered: {:?}", delivery),
             Err((error, _)) => println!("Error delivering message: {:?}", error),
@@ -60,19 +70,11 @@ async fn run_client() {
     }
 }
 
-/// Kafka consumer that listens to messages and broadcasts them.
 async fn consume_kafka(tx: broadcast::Sender<String>) {
-    let consumer: StreamConsumer = ClientConfig::new()
-        .set("bootstrap.servers", "localhost:9092")
-        .set("group.id", "group1")
-        .set("auto.offset.reset", "earliest")
-        .create()
-        .expect("Failed to create Kafka consumer");
-
-    consumer.subscribe(&["default_topic"]).expect("Subscription failed");
+    let consumer = create_consumer();
+    consumer.subscribe(&[DEFAULT_TOPIC]).expect("Subscription failed");
 
     let mut stream = consumer.stream();
-
     while let Some(result) = stream.next().await {
         if let Ok(msg) = result {
             if let Some(Ok(payload)) = msg.payload_view::<str>() {
@@ -82,7 +84,6 @@ async fn consume_kafka(tx: broadcast::Sender<String>) {
     }
 }
 
-/// Handles a single WebSocket connection, forwarding messages from the broadcast channel.
 async fn handle_ws(ws: warp::ws::WebSocket, mut rx: broadcast::Receiver<String>) {
     let (mut ws_tx, _) = ws.split();
     while let Ok(msg) = rx.recv().await {
@@ -96,6 +97,6 @@ async fn handle_ws(ws: warp::ws::WebSocket, mut rx: broadcast::Receiver<String>)
 async fn main() {
     let server_handle = tokio::spawn(run_server());
     let client_handle = tokio::spawn(run_client());
-
+    
     let _ = tokio::join!(server_handle, client_handle);
 }
