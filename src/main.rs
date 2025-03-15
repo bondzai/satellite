@@ -52,7 +52,8 @@ async fn run_server() {
         WS_SERVER_ADDR.0[2],
         WS_SERVER_ADDR.0[3],
     );
-    println!("Starting WebSocket server on {}:{} (endpoint: /ws)", ip_address, WS_SERVER_ADDR.1);
+
+    println!("Starting server on {}:{} (endpoint: /ws)", ip_address, WS_SERVER_ADDR.1);
     warp::serve(ws_route).run(WS_SERVER_ADDR).await;
 }
 
