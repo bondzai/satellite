@@ -16,13 +16,11 @@ async fn run_server() {
     // Create a broadcast channel to share messages with WebSocket clients.
     let (tx, _) = broadcast::channel::<String>(16);
 
-    // Spawn the Kafka consumer task.
     let consumer_tx = tx.clone();
     tokio::spawn(async move {
         consume_kafka(consumer_tx).await;
     });
 
-    // Define a WebSocket endpoint at "/ws".
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .map(move |ws: warp::ws::Ws| {
@@ -41,7 +39,7 @@ async fn run_client() {
         .create()
         .expect("Failed to create Kafka producer");
 
-    let topic = "my_topic";
+    let topic = "default_topic";
     let mut counter = 0;
 
     loop {
@@ -71,14 +69,12 @@ async fn consume_kafka(tx: broadcast::Sender<String>) {
         .create()
         .expect("Failed to create Kafka consumer");
 
-    consumer.subscribe(&["my_topic"]).expect("Subscription failed");
+    consumer.subscribe(&["default_topic"]).expect("Subscription failed");
 
-    // Use the new stream() method.
     let mut stream = consumer.stream();
 
     while let Some(result) = stream.next().await {
         if let Ok(msg) = result {
-            // Extract payload if it exists and is valid UTF-8.
             if let Some(Ok(payload)) = msg.payload_view::<str>() {
                 let _ = tx.send(payload.to_string());
             }
@@ -98,10 +94,8 @@ async fn handle_ws(ws: warp::ws::WebSocket, mut rx: broadcast::Receiver<String>)
 
 #[tokio::main]
 async fn main() {
-    // Run both server and client concurrently.
     let server_handle = tokio::spawn(run_server());
     let client_handle = tokio::spawn(run_client());
 
-    // Wait for both tasks (this runs indefinitely).
     let _ = tokio::join!(server_handle, client_handle);
 }
