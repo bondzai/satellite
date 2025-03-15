@@ -77,11 +77,17 @@ async fn consume_kafka(tx: broadcast::Sender<String>) {
 
     let mut stream = consumer.stream();
     while let Some(result) = stream.next().await {
-        if let Ok(msg) = result {
-            if let Some(Ok(payload)) = msg.payload_view::<str>() {
-                let _ = tx.send(payload.to_string());
-            }
-        }
+        let msg = match result {
+            Ok(msg) => msg,
+            Err(_) => continue,
+        };
+
+        let payload = match msg.payload_view::<str>() {
+            Some(Ok(payload)) => payload,
+            _ => continue,
+        };
+
+        let _ = tx.send(payload.to_string());
     }
 }
 
