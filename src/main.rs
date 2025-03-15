@@ -45,7 +45,13 @@ async fn run_server() {
             ws.on_upgrade(move |socket| handle_ws(socket, rx))
         });
 
-    let ip_address = WS_SERVER_ADDR.0.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(".");
+    let ip_address = format!(
+        "{}.{}.{}.{}",
+        WS_SERVER_ADDR.0[0],
+        WS_SERVER_ADDR.0[1],
+        WS_SERVER_ADDR.0[2],
+        WS_SERVER_ADDR.0[3],
+    );
     println!("Starting WebSocket server on {}:{} (endpoint: /ws)", ip_address, WS_SERVER_ADDR.1);
     warp::serve(ws_route).run(WS_SERVER_ADDR).await;
 }
