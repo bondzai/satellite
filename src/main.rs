@@ -112,5 +112,8 @@ async fn main() {
     let server_handle = tokio::spawn(run_server());
     let client_handle = tokio::spawn(run_client());
     
-    let _ = tokio::join!(server_handle, client_handle);
+    let _ = tokio::join!(
+        server_handle,
+        client_handle,
+    );
 }
