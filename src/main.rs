@@ -35,7 +35,7 @@ async fn run_server() {
 
     let consumer_tx = tx.clone();
     tokio::spawn(async move {
-        consume_kafka(consumer_tx).await;
+        consume_event(consumer_tx).await;
     });
 
     let ws_route = warp::path("ws")
@@ -45,13 +45,12 @@ async fn run_server() {
             ws.on_upgrade(move |socket| handle_ws(socket, rx))
         });
 
-    let ip_address = format!(
-        "{}.{}.{}.{}",
-        WS_SERVER_ADDRESS.0[0],
-        WS_SERVER_ADDRESS.0[1],
-        WS_SERVER_ADDRESS.0[2],
-        WS_SERVER_ADDRESS.0[3],
-    );
+    let ip_address = WS_SERVER_ADDRESS
+        .0
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(".");
 
     println!("Starting server on {}:{} (endpoint: /ws)", ip_address, WS_SERVER_ADDRESS.1);
     warp::serve(ws_route).run(WS_SERVER_ADDRESS).await;
@@ -78,7 +77,7 @@ async fn run_client() {
     }
 }
 
-async fn consume_kafka(tx: broadcast::Sender<String>) {
+async fn consume_event(tx: broadcast::Sender<String>) {
     let consumer = create_consumer();
     consumer.subscribe(&[KAFKA_DEFAULT_TOPIC]).expect("Subscription failed");
 
