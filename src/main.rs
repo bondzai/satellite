@@ -12,7 +12,7 @@ use warp::Filter;
 
 const KAFKA_BOOTSTRAP_SERVERS: &str = "localhost:9092";
 const KAFKA_DEFAULT_TOPIC: &str = "default_topic";
-const WS_SERVER_ADDR: ([u8; 4], u16) = ([127, 0, 0, 1], 3030);
+const WS_SERVER_ADDRESS: ([u8; 4], u16) = ([127, 0, 0, 1], 3030);
 
 fn create_producer() -> FutureProducer {
     ClientConfig::new()
@@ -47,14 +47,14 @@ async fn run_server() {
 
     let ip_address = format!(
         "{}.{}.{}.{}",
-        WS_SERVER_ADDR.0[0],
-        WS_SERVER_ADDR.0[1],
-        WS_SERVER_ADDR.0[2],
-        WS_SERVER_ADDR.0[3],
+        WS_SERVER_ADDRESS.0[0],
+        WS_SERVER_ADDRESS.0[1],
+        WS_SERVER_ADDRESS.0[2],
+        WS_SERVER_ADDRESS.0[3],
     );
 
-    println!("Starting server on {}:{} (endpoint: /ws)", ip_address, WS_SERVER_ADDR.1);
-    warp::serve(ws_route).run(WS_SERVER_ADDR).await;
+    println!("Starting server on {}:{} (endpoint: /ws)", ip_address, WS_SERVER_ADDRESS.1);
+    warp::serve(ws_route).run(WS_SERVER_ADDRESS).await;
 }
 
 async fn run_client() {
