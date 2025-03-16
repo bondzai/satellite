@@ -56,7 +56,7 @@ async fn run_server() {
     warp::serve(ws_route).run(WS_SERVER_ADDRESS).await;
 }
 
-async fn run_client() {
+async fn run_simulator_event_source_client() {
     let producer = new_producer();
     let mut counter = 0;
 
@@ -108,11 +108,11 @@ async fn handle_ws(ws: warp::ws::WebSocket, mut rx: broadcast::Receiver<String>)
 
 #[tokio::main]
 async fn main() {
-    let server_handle = tokio::spawn(run_server());
-    let client_handle = tokio::spawn(run_client());
-    
+    let server_task = tokio::spawn(run_server());
+    let simulator_task = tokio::spawn(run_simulator_event_source_client());
+
     let _ = tokio::join!(
-        server_handle,
-        client_handle,
+        server_task,
+        simulator_task,
     );
 }
