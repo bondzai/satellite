@@ -14,14 +14,14 @@ const KAFKA_BOOTSTRAP_SERVERS: &str = "localhost:9092";
 const KAFKA_DEFAULT_TOPIC: &str = "default_topic";
 const WS_SERVER_ADDRESS: ([u8; 4], u16) = ([127, 0, 0, 1], 3030);
 
-fn create_producer() -> FutureProducer {
+fn new_producer() -> FutureProducer {
     ClientConfig::new()
         .set("bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
         .create()
         .expect("Failed to create Kafka producer")
 }
 
-fn create_consumer() -> StreamConsumer {
+fn new_consumer() -> StreamConsumer {
     ClientConfig::new()
         .set("bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
         .set("group.id", "group1")
@@ -57,7 +57,7 @@ async fn run_server() {
 }
 
 async fn run_client() {
-    let producer = create_producer();
+    let producer = new_producer();
     let mut counter = 0;
 
     loop {
@@ -78,7 +78,7 @@ async fn run_client() {
 }
 
 async fn consume_event(tx: broadcast::Sender<String>) {
-    let consumer = create_consumer();
+    let consumer = new_consumer();
     consumer.subscribe(&[KAFKA_DEFAULT_TOPIC]).expect("Subscription failed");
 
     let mut stream = consumer.stream();
