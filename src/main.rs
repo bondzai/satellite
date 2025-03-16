@@ -11,7 +11,7 @@ use tokio::time::sleep;
 use warp::Filter;
 
 const KAFKA_BOOTSTRAP_SERVERS: &str = "localhost:9092";
-const DEFAULT_TOPIC: &str = "default_topic";
+const KAFKA_DEFAULT_TOPIC: &str = "default_topic";
 const WS_SERVER_ADDR: ([u8; 4], u16) = ([127, 0, 0, 1], 3030);
 
 fn create_producer() -> FutureProducer {
@@ -64,7 +64,7 @@ async fn run_client() {
     loop {
         let payload = format!("Message number {}", counter);
         let key = format!("key-{}", counter);
-        let record = FutureRecord::to(DEFAULT_TOPIC)
+        let record = FutureRecord::to(KAFKA_DEFAULT_TOPIC)
             .payload(&payload)
             .key(&key);
 
@@ -80,7 +80,7 @@ async fn run_client() {
 
 async fn consume_kafka(tx: broadcast::Sender<String>) {
     let consumer = create_consumer();
-    consumer.subscribe(&[DEFAULT_TOPIC]).expect("Subscription failed");
+    consumer.subscribe(&[KAFKA_DEFAULT_TOPIC]).expect("Subscription failed");
 
     let mut stream = consumer.stream();
     while let Some(result) = stream.next().await {
